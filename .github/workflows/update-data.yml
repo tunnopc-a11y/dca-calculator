@@ -1,0 +1,38 @@
+name: อัปเดตข้อมูล DCA รายเดือน
+
+on:
+  schedule:
+    # รันวันที่ 2 ของทุกเดือน 02:00 UTC (~09:00 ไทย) — เผื่อราคาปิดเดือนก่อนนิ่งแล้ว
+    - cron: '0 2 2 * *'
+  workflow_dispatch:   # กดรันเองได้จากแท็บ Actions
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: เช็คเอาต์โค้ด
+        uses: actions/checkout@v4
+
+      - name: ติดตั้ง Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: ดึงข้อมูลใหม่ + validate (ล้มเลิกถ้าข้อมูลพัง)
+        run: python update_data.py
+
+      - name: commit & push ถ้ามีข้อมูลใหม่จริง
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet index.html; then
+            echo "ไม่มีข้อมูลใหม่ — ข้าม"
+          else
+            git add index.html
+            git commit -m "อัปเดตข้อมูลอัตโนมัติ ($(date -u +%Y-%m-%d))"
+            git push
+            echo "อัปเดตแล้ว"
+          fi

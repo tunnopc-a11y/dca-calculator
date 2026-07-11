@@ -6,11 +6,23 @@ import json, time, re, sys, os, urllib.request, urllib.parse
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
-def fetch(symbol, range_="30y"):
+def fetch(symbol, range_="30y", retries=3):
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}?interval=1mo&range={range_}"
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        data = json.load(r)
+    last_err = None
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=UA)
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = json.load(r)
+            if data.get("chart", {}).get("error"):
+                raise ValueError(f"Yahoo error: {data['chart']['error']}")
+            break
+        except Exception as e:
+            last_err = e
+            print(f"  retry {symbol} ({attempt+1}/{retries}): {e}", file=sys.stderr)
+            time.sleep(3 * (attempt + 1))
+    else:
+        raise SystemExit(f"ดึง {symbol} ไม่สำเร็จหลัง {retries} ครั้ง: {last_err}")
     res = data["chart"]["result"][0]
     ts = res["timestamp"]
     quote = res["indicators"]["quote"][0]
@@ -107,6 +119,36 @@ def inject(data, html_path):
     print(f"injected {len(payload):,} bytes into {html_path}  "
           f"({len(data['dates'])} months {data['dates'][0]} -> {data['dates'][-1]})", file=sys.stderr)
 
+def current_embedded(html_path):
+    """อ่านข้อมูลที่ฝังอยู่เดิมใน index.html (ถ้ามี) ไว้เทียบกันก่อนเขียนทับ"""
+    try:
+        with open(html_path, encoding="utf-8") as f:
+            m = re.search(r'<script id="mkt" type="application/json">(.*?)</script>', f.read(), re.S)
+        return json.loads(m.group(1)) if m and m.group(1).strip() else None
+    except Exception:
+        return None
+
+def validate(new, old):
+    """กันข้อมูลพัง: ถ้าใหม่แย่กว่าเดิมให้ล้มเลิก ไม่ commit ทับของดี"""
+    if not new.get("dates") or not new.get("assets"):
+        raise SystemExit("ยกเลิก: ข้อมูลใหม่ว่าง")
+    if len(new["dates"]) < 60:
+        raise SystemExit(f"ยกเลิก: จำนวนเดือนน้อยผิดปกติ ({len(new['dates'])})")
+    for k, a in new["assets"].items():
+        if not a.get("values") or len(a["values"]) < 12:
+            raise SystemExit(f"ยกเลิก: สินทรัพย์ {k} ข้อมูลสั้น/ว่าง")
+    if old:
+        if len(new["dates"]) < len(old["dates"]):
+            raise SystemExit(f"ยกเลิก: เดือนใหม่ ({len(new['dates'])}) < เดิม ({len(old['dates'])})")
+        missing = set(old["assets"]) - set(new["assets"])
+        if missing:
+            raise SystemExit(f"ยกเลิก: สินทรัพย์หายไป {missing}")
+    print(f"validate ผ่าน: {len(new['dates'])} เดือน, {len(new['assets'])} สินทรัพย์", file=sys.stderr)
+
 if __name__ == "__main__":
     here = os.path.dirname(os.path.abspath(__file__))
-    inject(build(), os.path.join(here, "index.html"))
+    html_path = os.path.join(here, "index.html")
+    old = current_embedded(html_path)
+    new = build()
+    validate(new, old)
+    inject(new, html_path)
