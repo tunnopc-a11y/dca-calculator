@@ -26,6 +26,7 @@ def fetch(symbol, range_="30y"):
 
 # หุ้นต่างประเทศใช้ ETF (adjclose = รวมเงินปันผล / total return) แล้วแปลงเป็น THB
 ASSETS = {
+    "VT":      ("VT",        "หุ้นทั้งโลก (VT)",         "USD", "equity_dm"),
     "SP500":   ("SPY",       "S&P 500 (SPY)",            "USD", "equity_dm"),
     "NDX":     ("QQQ",       "Nasdaq 100 (QQQ)",         "USD", "equity_dm"),
     "STOXX":   ("VGK",       "หุ้นยุโรป (VGK)",           "USD", "equity_dm"),
