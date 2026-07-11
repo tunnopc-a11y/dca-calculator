@@ -24,21 +24,22 @@ def fetch(symbol, range_="30y"):
         out[ym] = c
     return out
 
+# หุ้นต่างประเทศใช้ ETF (adjclose = รวมเงินปันผล / total return) แล้วแปลงเป็น THB
 ASSETS = {
-    "SP500":   ("^GSPC",     "S&P 500 (สหรัฐฯ)",        "USD", "equity_dm"),
-    "NDX":     ("^NDX",      "Nasdaq 100 (สหรัฐฯ)",     "USD", "equity_dm"),
-    "STOXX":   ("^STOXX",    "STOXX Europe 600",         "EUR", "equity_dm"),
-    "N225":    ("^N225",     "Nikkei 225 (ญี่ปุ่น)",     "JPY", "equity_dm"),
+    "SP500":   ("SPY",       "S&P 500 (SPY)",            "USD", "equity_dm"),
+    "NDX":     ("QQQ",       "Nasdaq 100 (QQQ)",         "USD", "equity_dm"),
+    "STOXX":   ("VGK",       "หุ้นยุโรป (VGK)",           "USD", "equity_dm"),
+    "N225":    ("EWJ",       "หุ้นญี่ปุ่น (EWJ)",         "USD", "equity_dm"),
     "CSI300":  ("ASHR",      "CSI 300 จีน (ASHR)",       "USD", "equity_em"),
-    "HSI":     ("^HSI",      "Hang Seng (ฮ่องกง)",       "HKD", "equity_em"),
-    "SENSEX":  ("^BSESN",    "SENSEX (อินเดีย)",         "INR", "equity_em"),
+    "HSI":     ("EWH",       "หุ้นฮ่องกง (EWH)",          "USD", "equity_em"),
+    "SENSEX":  ("EPI",       "หุ้นอินเดีย (EPI)",         "USD", "equity_em"),
     "AXJ":     ("AAXJ",      "เอเชีย ไม่รวมญี่ปุ่น (AAXJ)", "USD", "equity_em"),
     "SET":     ("TDEX.BK",   "หุ้นไทย SET50 (TDEX)",     "THB", "equity_em"),
     "THBOND":  ("ABFTH.BK",  "ตราสารหนี้ไทย (ABFTH)",    "THB", "bond"),
     "USAGG":   ("AGG",       "ตราสารหนี้สหรัฐฯ (AGG)",   "USD", "bond"),
     "GOLD":    ("GC=F",      "ทองคำ (COMEX)",            "USD", "commodity"),
 }
-FX_SYMS = {"THB": "THB=X", "JPY": "JPY=X", "HKD": "HKD=X", "CNY": "CNY=X", "INR": "INR=X", "EUR": "EURUSD=X"}
+FX_SYMS = {"THB": "THB=X"}
 
 def build():
     fx = {}
