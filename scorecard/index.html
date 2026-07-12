@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>สกอร์การ์ดหุ้นสหรัฐ · Fox9 Empire</title>
+<style>
+:root{
+  --bg:#f9f9f7; --card:#fcfcfb; --ink:#0b0b0b; --ink-2:#52514e; --ink-3:#898781;
+  --line:#e1e0d9; --border:rgba(11,11,11,.10);
+  --blue:#2a78d6; --good:#0ca30c; --warn:#c98500; --bad:#d03b3b;
+  --good-bg:#e6f4e6; --warn-bg:#fdf3dd; --bad-bg:#fbe7e7; --accent:#eb6834;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0d0d0d; --card:#1a1a19; --ink:#fff; --ink-2:#c3c2b7; --ink-3:#898781;
+    --line:#2c2c2a; --border:rgba(255,255,255,.10);
+    --blue:#3987e5; --good:#0ca30c; --warn:#eda100; --bad:#e66767;
+    --good-bg:#12290f; --warn-bg:#2e2410; --bad-bg:#331313; --accent:#d95926;
+  }
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);padding:16px;max-width:760px;margin:0 auto;line-height:1.5}
+h1{font-size:22px;margin:8px 0 2px}
+.sub{color:var(--ink-3);font-size:12.5px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+.searchrow{display:flex;gap:8px}
+input[type=text]{flex:1;font-size:18px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);text-transform:uppercase}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:10px}
+.go{background:var(--accent);color:#fff;font-size:16px;font-weight:700;padding:10px 22px}
+.go:disabled{opacity:.5}
+.chips{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--bg);border:1px solid var(--line);color:var(--ink-2);font-size:12px;padding:4px 10px;border-radius:999px}
+#status{font-size:13px;color:var(--ink-3);margin-top:8px;min-height:18px}
+#status.err{color:var(--bad)}
+.hidden{display:none}
+/* verdict */
+.verdict{display:flex;gap:16px;align-items:center}
+.score-ring{width:92px;height:92px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;border:6px solid var(--line)}
+.score-ring b{font-size:26px;line-height:1}
+.score-ring small{font-size:10.5px;color:var(--ink-3)}
+.v-good{border-color:var(--good)} .v-warn{border-color:var(--warn)} .v-bad{border-color:var(--bad)}
+.v-tag{font-weight:800;font-size:17px}
+.v-name{color:var(--ink-2);font-size:13px}
+.v-price{color:var(--ink-3);font-size:12.5px}
+/* sections */
+h2{font-size:14px;color:var(--ink-2);margin:0 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+h2 .pts{font-size:12px;color:var(--ink-3);font-weight:400}
+.mrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
+.mrow:first-of-type{border-top:none}
+.mname{flex:1}
+.mname small{display:block;color:var(--ink-3);font-size:11px}
+.mval{width:104px;text-align:right}
+.mval input{width:100%;text-align:right;font-size:13.5px;padding:4px 6px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink)}
+.pill{width:74px;text-align:center;font-size:12px;font-weight:700;padding:4px 0;border-radius:999px;flex:none}
+.p-good{background:var(--good-bg);color:var(--good)}
+.p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-bad{background:var(--bad-bg);color:var(--bad)}
+.p-na{background:var(--bg);color:var(--ink-3)}
+/* segmented */
+.seg{display:flex;gap:4px}
+.seg button{font-size:11.5px;padding:5px 9px;background:var(--bg);border:1px solid var(--line);color:var(--ink-2);border-radius:8px}
+.seg button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+/* dcf */
+.dcfgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.dcfgrid label{font-size:11px;color:var(--ink-3);display:block}
+.dcfgrid input{width:100%;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.dcf-out{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.dcf-big{font-size:22px;font-weight:800}
+footer{color:var(--ink-3);font-size:11px;margin:18px 0 30px;line-height:1.6}
+a{color:var(--blue)}
+.linkrow{font-size:12.5px;margin-top:6px}
+</style>
+</head>
+<body>
+
+<h1>🦊 สกอร์การ์ดหุ้นสหรัฐ</h1>
+<div class="sub">Fox9 Empire · พิมพ์ ticker → ดึงงบจริง ให้คะแนน 3 ชั้น + Reverse DCF อัตโนมัติ</div>
+
+<div class="card">
+  <div class="searchrow">
+    <input type="text" id="tk" placeholder="เช่น SE, NVDA, PLTR" maxlength="8">
+    <button class="go" id="go">วิเคราะห์</button>
+  </div>
+  <div class="chips">
+    <span class="chip">ลอง: <a href="#" data-t="SE">SE</a> · <a href="#" data-t="NVDA">NVDA</a> · <a href="#" data-t="SOFI">SOFI</a> · <a href="#" data-t="CRWD">CRWD</a></span>
+  </div>
+  <div id="status"></div>
+</div>
+
+<div id="results" class="hidden">
+
+  <div class="card verdict">
+    <div class="score-ring" id="ring"><b id="scoreN">–</b><small>/ 24</small></div>
+    <div>
+      <div class="v-tag" id="vTag">–</div>
+      <div class="v-name" id="vName"></div>
+      <div class="v-price" id="vPrice"></div>
+      <div class="linkrow"><a id="lnkSA" target="_blank" rel="noopener">stockanalysis ↗</a> · <a id="lnkSEC" target="_blank" rel="noopener">SEC EDGAR ↗</a></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>ชั้น A — โตจริงไหม <span class="pts" id="ptsA"></span></h2>
+    <div id="secA"></div>
+  </div>
+  <div class="card">
+    <h2>ชั้น B — รอดถึงวันมีกำไรไหม <span class="pts" id="ptsB"></span></h2>
+    <div id="secB"></div>
+  </div>
+  <div class="card">
+    <h2>ชั้น C — ยังไม่แพงไหม <span class="pts" id="ptsC"></span></h2>
+    <div id="secC"></div>
+  </div>
+
+  <div class="card">
+    <h2>Reverse DCF — ราคานี้ ตลาดบังคับให้โตกี่ %/ปี?</h2>
+    <div class="dcfgrid">
+      <div><label>Revenue TTM ($M)</label><input type="number" id="dRev"></div>
+      <div><label>Enterprise Value ($M)</label><input type="number" id="dEV"></div>
+      <div><label>Terminal FCF Margin (%)</label><input type="number" id="dMar" value="20"></div>
+      <div><label>WACC (%)</label><input type="number" id="dWacc" value="10"></div>
+      <div><label>จำนวนปี (N)</label><input type="number" id="dN" value="10"></div>
+      <div><label>Terminal Growth (%)</label><input type="number" id="dTg" value="3"></div>
+    </div>
+    <div class="dcf-out">
+      <div>Implied Growth: <span class="dcf-big" id="dImp">–</span></div>
+      <div>| Growth จริง <b id="dAct">–</b></div>
+      <div><span class="pill" id="dPill">–</span></div>
+    </div>
+    <div class="sub" style="margin-top:6px" id="dNote"></div>
+  </div>
+
+</div>
+
+<footer>
+  ⚠️ เครื่องมือเพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุน · คะแนนสูง = "คู่ควรกับการเจาะลึกต่อ" ไม่ใช่สัญญาณซื้อ — อ่าน 10-K + Risk Factors ก่อนเสมอ ·
+  ข้อมูลจาก stockanalysis.com (ผ่าน r.jina.ai) อาจดีเลย์/คลาดเคลื่อน แก้ตัวเลขในช่องได้ทุกช่อง ·
+  กรอบตัดสิน: บอก "วัน + catalyst" ได้ → ค่อยคิดเรื่อง option · เชื่อธุรกิจระยะยาว → หุ้น · สร้างโดย Fox8 🦊
+</footer>
+
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const JR = "https://r.jina.ai/";
+const SA = t => `https://stockanalysis.com/stocks/${t.toLowerCase()}/`;
+
+function numToken(s){           // "25.19B"→25190 ($M) | "44.27%"→44.27 | "612.48M"→612.48 | "n/a"→null
+  if(s==null) return null;
+  s = String(s).replace(/[,$\s]/g,"");
+  if(/^n\/?a$/i.test(s)||s==="-"||s==="") return null;
+  const m = s.match(/^([+-]?\d+(?:\.\d+)?)([%BMTK]?)$/i);
+  if(!m) return null;
+  let v = parseFloat(m[1]);
+  const u = m[2].toUpperCase();
+  if(u==="B") v *= 1000;        // เก็บเงินเป็น $M
+  else if(u==="T") v *= 1e6;
+  else if(u==="K") v /= 1000;
+  return v;
+}
+function grab(text, label){     // หา "Label 12.3B" / "Label (YoY)+2.9%" ในข้อความ
+  const esc = label.replace(/[.*+?^${}()|[\]\\/]/g,"\\$&");
+  const re = new RegExp(esc + "\\s*(?:\\(YoY\\))?\\s*\\(?([+-]?[\\d.,]+\\s*[%BMTKbmtk]?|n/a|-)\\)?");
+  const m = text.match(re);
+  return m ? numToken(m[1]) : null;
+}
+function finRow(text, label){   // แถวตาราง markdown "| Label | v1 | v2 |..."
+  const esc = label.replace(/[.*+?^${}()|[\]\\/]/g,"\\$&");
+  const re = new RegExp("\\|\\s*"+esc+"\\s*\\|([^\\n]+)");
+  const m = text.match(re);
+  if(!m) return [];
+  return m[1].split("|").map(c=>numToken(c.trim()));
+}
+const fmt = (v,d=1) => v==null||isNaN(v) ? "–" : (+v).toLocaleString("en-US",{maximumFractionDigits:d});
+
+/* ---------- scoring ---------- */
+// type hi/lo: p1=เกณฑ์ดี p2=เกณฑ์กลาง | qual: ค่า 0/0.5/1
+const METRICS = [
+ {sec:"A", id:"growth",  name:"Revenue Growth YoY (%)", hint:"≥25 ดี · 15–25 กลาง", type:"hi", p1:25, p2:15},
+ {sec:"A", id:"gm",      name:"Gross Margin (%)",       hint:"≥60 ดี · 40–60 กลาง", type:"hi", p1:60, p2:40},
+ {sec:"A", id:"gmtrend", name:"เทรนด์ Gross Margin",     hint:"เทียบ TTM กับ 2 ปีก่อน", type:"qual", opts:["ลง","ทรง","ขึ้น"]},
+ {sec:"A", id:"rule40",  name:"Rule of 40",             hint:"growth + FCF margin ≥40 ดี", type:"hi", p1:40, p2:30},
+ {sec:"A", id:"pos",     name:"ตำแหน่งตลาด",             hint:"ประเมินเอง", type:"qual", opts:["โหล","รอง","ผู้นำ"]},
+ {sec:"B", id:"runway",  name:"Cash Runway (ไตรมาส)",   hint:"≥12 ดี · FCF บวก = ไม่จำกัด", type:"hi", p1:12, p2:8},
+ {sec:"B", id:"fcfm",    name:"FCF Margin (%)",         hint:"≥0 ดี · -10..0 กลาง", type:"hi", p1:0, p2:-10},
+ {sec:"B", id:"dilu",    name:"Dilution: หุ้นเพิ่ม YoY (%)", hint:"≤3 ดี · 3–7 กลาง", type:"lo", p1:3, p2:7},
+ {sec:"B", id:"debt",    name:"สถานะหนี้",               hint:"อิง Net Cash / Debt/FCF", type:"qual", opts:["หนี้สูง","จัดการได้","เงินสดสุทธิ"]},
+ {sec:"C", id:"evs",     name:"EV / Sales (x)",         hint:"≤6 ดี · 6–12 กลาง", type:"lo", p1:6, p2:12},
+ {sec:"C", id:"gap",     name:"Growth จริง − Implied (%)", hint:"จาก Reverse DCF ล่าง (อัตโนมัติ)", type:"hi", p1:5, p2:-5, ro:true},
+ {sec:"C", id:"evshist", name:"EV/S เทียบคู่แข่ง/อดีตตัวเอง", hint:"ดูกราฟใน stockanalysis", type:"qual", opts:["แพงกว่า","พอกัน","ถูกกว่า"]},
+];
+const state = {};   // id -> value
+
+function scoreOf(m, v){
+  if(v==null||isNaN(v)) return {s:0, cls:"p-na", txt:"ไม่มีข้อมูล"};
+  if(m.type==="qual"){
+    const s = v*2;
+    return s>=2?{s,cls:"p-good",txt:"✓ ดี"}:s>=1?{s,cls:"p-warn",txt:"⚠ กลาง"}:{s,cls:"p-bad",txt:"✗ อ่อน"};
+  }
+  const ok = m.type==="hi" ? v>=m.p1 : v<=m.p1;
+  const mid = m.type==="hi" ? v>=m.p2 : v<=m.p2;
+  return ok?{s:2,cls:"p-good",txt:"✓ ดี"}:mid?{s:1,cls:"p-warn",txt:"⚠ กลาง"}:{s:0,cls:"p-bad",txt:"✗ อ่อน"};
+}
+
+function buildRows(){
+  ["A","B","C"].forEach(sec=>{
+    const box = $("sec"+sec); box.innerHTML="";
+    METRICS.filter(m=>m.sec===sec).forEach(m=>{
+      const row = document.createElement("div");
+      row.className="mrow";
+      let ctrl;
+      if(m.type==="qual"){
+        ctrl = `<div class="seg" data-m="${m.id}">` +
+          m.opts.map((o,i)=>`<button data-v="${i*0.5}">${o}</button>`).join("") + `</div>`;
+      } else {
+        ctrl = `<div class="mval"><input type="number" step="0.1" data-m="${m.id}" ${m.ro?"readonly":""}></div>`;
+      }
+      row.innerHTML = `<div class="mname">${m.name}<small>${m.hint}</small></div>${ctrl}<span class="pill p-na" id="pill_${m.id}">–</span>`;
+      box.appendChild(row);
+    });
+  });
+  document.querySelectorAll(".mval input").forEach(inp=>{
+    inp.addEventListener("input",()=>{ state[inp.dataset.m]=inp.value===""?null:+inp.value; recompute(); });
+  });
+  document.querySelectorAll(".seg").forEach(seg=>{
+    seg.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+      seg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      state[seg.dataset.m]=+b.dataset.v; recompute();
+    }));
+  });
+  ["dRev","dEV","dMar","dWacc","dN","dTg"].forEach(id=>$(id).addEventListener("input",recompute));
+}
+
+function setVal(id, v, dec=1){
+  state[id]=v;
+  const inp=document.querySelector(`input[data-m=${id}]`);
+  if(inp) inp.value = v==null?"":(+v).toFixed(dec);
+  const seg=document.querySelector(`.seg[data-m=${id}]`);
+  if(seg && v!=null){
+    seg.querySelectorAll("button").forEach(b=>b.classList.toggle("on", +b.dataset.v===v));
+  }
+}
+
+/* ---------- Reverse DCF ---------- */
+function impliedGrowth(R0, EV, mar, w, N, tg){
+  if(!R0||!EV||w<=tg) return null;
+  const evAt = g => R0*Math.pow(1+g,N)*(mar/100)*(1+tg/100)/((w-tg)/100)/Math.pow(1+w/100,N);
+  let lo=-0.5, hi=2.0;
+  if(evAt(hi)<EV) return null;
+  for(let i=0;i<80;i++){ const mid=(lo+hi)/2; if(evAt(mid)<EV) lo=mid; else hi=mid; }
+  return (lo+hi)/2*100;
+}
+
+function recompute(){
+  // DCF
+  const R0=+$("dRev").value||null, EV=+$("dEV").value||null;
+  const imp = impliedGrowth(R0, EV, +$("dMar").value, +$("dWacc").value, +$("dN").value, +$("dTg").value);
+  $("dImp").textContent = imp==null?"–":fmt(imp,1)+"%/ปี";
+  const act = state.growth;
+  $("dAct").textContent = act==null?"–":fmt(act,1)+"%/ปี";
+  let gap=null;
+  if(imp!=null && act!=null){ gap = act-imp; }
+  setVal("gap", gap==null?null:+gap.toFixed(1));
+  const dp=$("dPill");
+  if(gap==null){ dp.className="pill p-na"; dp.textContent="–"; $("dNote").textContent=""; }
+  else if(gap>=5){ dp.className="pill p-good"; dp.textContent="✓ ยังไม่แพง"; $("dNote").textContent="ตลาดตั้งบาร์ต่ำกว่าการโตจริง — สนใจได้ แต่ถามต่อว่าทำไมตลาดถึงไม่เชื่อ"; }
+  else if(gap>=-5){ dp.className="pill p-warn"; dp.textContent="⚠ สมเหตุผล"; $("dNote").textContent="ราคาสะท้อนการโตพอดีๆ ไม่มีส่วนลด"; }
+  else { dp.className="pill p-bad"; dp.textContent="✗ แพง"; $("dNote").textContent="ตลาดคาดหวังเกินการโตจริง — สะดุดเมื่อไหร่ de-rate แรง"; }
+
+  // pills + totals
+  let total=0, per={A:0,B:0,C:0};
+  METRICS.forEach(m=>{
+    const r=scoreOf(m, state[m.id]);
+    const p=$("pill_"+m.id); p.className="pill "+r.cls; p.textContent=r.txt;
+    total+=r.s; per[m.sec]+=r.s;
+  });
+  $("ptsA").textContent=per.A+" / 10"; $("ptsB").textContent=per.B+" / 8"; $("ptsC").textContent=per.C+" / 6";
+  $("scoreN").textContent=total;
+  const ring=$("ring"), tag=$("vTag");
+  ring.className="score-ring "+(total>=19?"v-good":total>=12?"v-warn":"v-bad");
+  tag.textContent = total>=19?"✓ น่าศึกษาต่อ — เข้าไม้เล็กได้":total>=12?"⚠ Watchlist — ตามต่อ":"✗ ผ่าน / หลบ";
+  tag.style.color = total>=19?"var(--good)":total>=12?"var(--warn)":"var(--bad)";
+}
+
+/* ---------- fetch & parse ---------- */
+async function jfetch(url){
+  const r = await fetch(JR+url, {headers:{ "X-Return-Format":"markdown" }});
+  if(!r.ok) throw new Error("fetch "+r.status);
+  return (await r.text()).replace(/\[([^\]]*)\]\([^)]*\)/g,"$1");   // ตัด markdown link
+}
+
+async function analyze(t){
+  t=t.trim().toUpperCase();
+  if(!t) return;
+  $("go").disabled=true;
+  $("status").className=""; $("status").textContent="กำลังดึงข้อมูล "+t+" … (10–30 วิ)";
+  try{
+    const [stats, fin] = await Promise.all([ jfetch(SA(t)+"statistics/"), jfetch(SA(t)+"financials/") ]);
+    if(/404|page not found/i.test(stats.slice(0,400))) throw new Error("ไม่พบ ticker นี้");
+
+    // ราคา+ชื่อ (API เปิด CORS ตรง)
+    let price=null, name=t;
+    try{
+      const q = await (await fetch(`https://stockanalysis.com/api/quotes/s/${t}`)).json();
+      price = q?.data?.cl ?? q?.data?.p ?? null;
+    }catch(e){}
+    const nm = stats.match(/^Title:\s*(.+?)\s*\(/m) || stats.match(/([A-Za-z .,&'-]+)\s*\(\s*(?:NYSE|NASDAQ|NYSEAMERICAN)\s*:/);
+    if(nm) name = nm[1].trim();
+
+    // --- financials table ---
+    const revRow   = finRow(fin,"Revenue");
+    const growRow  = finRow(fin,"Revenue Growth (YoY)");
+    const gmRow    = finRow(fin,"Gross Margin");
+    const fcfmRow  = finRow(fin,"FCF Margin");
+    const revTTM   = revRow[0] ?? revRow[1] ?? null;                    // $M
+    const growth   = growRow[0] ?? growRow[1] ?? grab(stats,"Revenue Growth");
+    const gmNow    = gmRow[0] ?? grab(stats,"Gross Margin");
+    const gmOld    = gmRow[2] ?? null;
+
+    // --- statistics ---
+    const fcfm     = grab(stats,"FCF Margin") ?? fcfmRow[1] ?? null;
+    const evs      = grab(stats,"EV / Sales");
+    const cash     = grab(stats,"Cash & Cash Equivalents");
+    const netCash  = grab(stats,"Net Cash");
+    const debtFcf  = grab(stats,"Debt / FCF");
+    const dilu     = grab(stats,"Shares Change");
+
+    // --- derived ---
+    setVal("growth", growth);
+    setVal("gm", gmNow);
+    if(gmNow!=null && gmOld!=null) setVal("gmtrend", gmNow-gmOld>0.5?1:gmNow-gmOld>=-0.5?0.5:0);
+    setVal("rule40", growth!=null&&fcfm!=null ? +(growth+fcfm).toFixed(1) : null);
+    if(state.pos==null) setVal("pos",0.5);                              // manual default: รอง
+    const fcfM$ = fcfm!=null&&revTTM ? revTTM*fcfm/100 : null;
+    let runway=null;
+    if(fcfM$!=null) runway = fcfM$>=0 ? 40 : (cash!=null? +(cash/(-fcfM$/4)).toFixed(1) : null);
+    setVal("runway", runway);
+    setVal("fcfm", fcfm);
+    setVal("dilu", dilu);
+    if(netCash!=null) setVal("debt", netCash>0?1:(debtFcf!=null&&debtFcf<3?0.5:0));
+    setVal("evs", evs, 2);
+    if(state.evshist==null) setVal("evshist",0.5);                      // manual default: พอกัน
+
+    // DCF inputs
+    $("dRev").value = revTTM? Math.round(revTTM):"";
+    $("dEV").value  = evs!=null&&revTTM? Math.round(evs*revTTM):"";
+    if(fcfm!=null) $("dMar").value = Math.max(10, Math.min(35, Math.round(fcfm>0?Math.max(fcfm,15):20)));
+
+    // header
+    $("vName").textContent = name+" ("+t+")";
+    $("vPrice").textContent = (price? "ราคา ~$"+fmt(price,2)+" · ":"")+"Revenue TTM $"+fmt(revTTM/1000,2)+"B · EV/S "+fmt(evs,2)+"x";
+    $("lnkSA").href = SA(t);
+    $("lnkSEC").href = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company="+t+"&type=10-K&dateb=&owner=include&count=10";
+
+    $("results").classList.remove("hidden");
+    $("status").textContent = "ดึงสำเร็จ · แก้ตัวเลขในช่องได้ทุกช่อง + เลือก 2 ข้อที่ต้องประเมินเอง (ตำแหน่งตลาด, EV/S เทียบอดีต)";
+    recompute();
+    window.scrollTo({top:$("results").offsetTop-10, behavior:"smooth"});
+  }catch(e){
+    $("status").className="err";
+    $("status").textContent = "ดึงไม่สำเร็จ: "+e.message+" — ลองใหม่อีกครั้ง หรือกรอกตัวเลขเองด้านล่าง";
+    $("results").classList.remove("hidden");
+    recompute();
+  }
+  $("go").disabled=false;
+}
+
+buildRows();
+$("go").onclick = ()=>analyze($("tk").value);
+$("tk").addEventListener("keydown",e=>{ if(e.key==="Enter") analyze($("tk").value); });
+document.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",e=>{
+  e.preventDefault(); $("tk").value=a.dataset.t; analyze(a.dataset.t);
+}));
+</script>
+</body>
+</html>
