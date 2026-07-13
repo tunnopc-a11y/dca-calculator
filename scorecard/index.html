@@ -67,6 +67,25 @@ h2 .pts{font-size:12px;color:var(--ink-3);font-weight:400}
 .dcfgrid input{width:100%;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 .dcf-out{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .dcf-big{font-size:22px;font-weight:800}
+/* about / exec / news / watchlist */
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.fact{background:var(--bg);border:1px solid var(--line);border-radius:999px;font-size:11.5px;color:var(--ink-2);padding:3px 10px}
+.desc{font-size:13px;color:var(--ink-2);line-height:1.65}
+.desc details{margin-top:4px}
+.desc summary{cursor:pointer;color:var(--blue);font-size:12px}
+.exrow{display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:12.5px}
+.exrow:first-child{border-top:none}
+.exrow b{flex:0 0 40%}
+.exrow span{color:var(--ink-3)}
+.nrow{padding:7px 0;border-top:1px solid var(--line)}
+.nrow:first-child{border-top:none}
+.nrow a{font-size:13px;text-decoration:none}
+.nrow small{display:block;color:var(--ink-3);font-size:11px}
+.wl{display:flex;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:12.5px}
+.wl:first-child{border-top:none}
+.wl button{background:var(--bg);border:1px solid var(--blue);color:var(--blue);font-weight:800;font-size:13px;padding:3px 10px;border-radius:8px;flex:none;width:64px}
+.wl .th{color:var(--ink-2)}
+.wl .rk{color:var(--bad)}
 footer{color:var(--ink-3);font-size:11px;margin:18px 0 30px;line-height:1.6}
 a{color:var(--blue)}
 .linkrow{font-size:12.5px;margin-top:6px}
@@ -82,10 +101,13 @@ a{color:var(--blue)}
     <input type="text" id="tk" placeholder="เช่น SE, NVDA, PLTR" maxlength="8">
     <button class="go" id="go">วิเคราะห์</button>
   </div>
-  <div class="chips">
-    <span class="chip">ลอง: <a href="#" data-t="SE">SE</a> · <a href="#" data-t="NVDA">NVDA</a> · <a href="#" data-t="SOFI">SOFI</a> · <a href="#" data-t="CRWD">CRWD</a></span>
-  </div>
+  <div id="history" class="chips"></div>
   <div id="status"></div>
+</div>
+
+<div class="card">
+  <h2>🎯 วอทช์ลิสต์ 10 ตัวน่าศึกษา <span class="pts">คัดโดย Fox8 ณ ก.ค. 2026 — จุดเริ่มศึกษา ไม่ใช่คำแนะนำซื้อ · กดชื่อเพื่อรันสกอร์การ์ด</span></h2>
+  <div id="watchlist"></div>
 </div>
 
 <div id="results" class="hidden">
@@ -98,6 +120,12 @@ a{color:var(--blue)}
       <div class="v-price" id="vPrice"></div>
       <div class="linkrow"><a id="lnkSA" target="_blank" rel="noopener">stockanalysis ↗</a> · <a id="lnkSEC" target="_blank" rel="noopener">SEC EDGAR ↗</a></div>
     </div>
+  </div>
+
+  <div class="card" id="cardAbout">
+    <h2>🏢 บริษัททำอะไร</h2>
+    <div id="aboutFacts" class="facts"></div>
+    <div id="aboutDesc" class="desc"></div>
   </div>
 
   <div class="card">
@@ -129,6 +157,16 @@ a{color:var(--blue)}
       <div><span class="pill" id="dPill">–</span></div>
     </div>
     <div class="sub" style="margin-top:6px" id="dNote"></div>
+  </div>
+
+  <div class="card" id="cardExec">
+    <h2>👤 ผู้บริหาร</h2>
+    <div id="execList"></div>
+  </div>
+
+  <div class="card" id="cardNews">
+    <h2>📰 ข่าวล่าสุด</h2>
+    <div id="newsList"></div>
   </div>
 
 </div>
@@ -284,11 +322,76 @@ function recompute(){
   tag.style.color = total>=19?"var(--good)":total>=12?"var(--warn)":"var(--bad)";
 }
 
+/* ---------- watchlist (คัด ณ ก.ค. 2026 — จุดเริ่มศึกษา ไม่ใช่คำแนะนำซื้อ) ---------- */
+const WATCH = [
+ ["SE",   "อีคอมเมิร์ซ+เกม+ฟินเทค SEA โต ~40% ที่ EV/S ~2.4x", "TikTok Shop บุกหนัก"],
+ ["NVDA", "เจ้าของ compute ยุค AI มาร์จิ้นเทพ",                "วัฏจักร capex + ราคาแพง"],
+ ["MSFT", "compounder คุณภาพ Azure+AI ฝังทุกองค์กร",           "ใหญ่แล้ว โตช้าลง"],
+ ["GOOGL","search+YouTube+cloud ราคาไม่แพงเทียบกลุ่ม",          "AI disrupt search ของตัวเอง"],
+ ["AMZN", "AWS + ค้าปลีก margin กำลังขยาย",                    "capex หนักต่อเนื่อง"],
+ ["ASML", "ผูกขาดเครื่อง EUV คอขวด semi ทั้งโลก",              "วัฏจักร + ข้อจำกัดขายจีน"],
+ ["TSM",  "โรงหล่อชิปเบอร์ 1 valuation ถูกกว่ากลุ่ม",           "ภูมิรัฐศาสตร์ไต้หวันตรงๆ"],
+ ["V",    "เก็บค่าผ่านทางทุกธุรกรรม โตสม่ำเสมอ",               "regulation / stablecoin"],
+ ["MELI", "Amazon+ธนาคารของละตินอเมริกา โตแรง",               "FX + การเมือง LatAm"],
+ ["CRWD", "ผู้นำ cybersecurity โตดี",                          "แพงมาก — ดูชั้น C ให้หนัก"],
+];
+function renderWatch(){
+  $("watchlist").innerHTML = WATCH.map(([t,th,rk])=>
+    `<div class="wl"><button data-t="${t}">${t}</button><span class="th">${th}</span><span class="rk">⚠ ${rk}</span></div>`).join("");
+  $("watchlist").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ $("tk").value=b.dataset.t; analyze(b.dataset.t); }));
+}
+/* ---------- history ---------- */
+function loadHist(){ try{return JSON.parse(localStorage.getItem("fox9_hist")||"[]");}catch(e){return [];} }
+function saveHist(t, score){
+  let h = loadHist().filter(x=>x.t!==t);
+  h.unshift({t, score, d:new Date().toISOString().slice(0,10)});
+  h = h.slice(0,8);
+  localStorage.setItem("fox9_hist", JSON.stringify(h));
+  renderHist();
+}
+function renderHist(){
+  const h = loadHist();
+  $("history").innerHTML = h.length? "เคยวิเคราะห์: "+h.map(x=>`<a href="#" class="chip" data-t="${x.t}">${x.t} ${x.score}/24</a>`).join(" ") : `<span class="chip">ยังไม่เคยวิเคราะห์ — ลองกดจากวอทช์ลิสต์ด้านล่าง</span>`;
+  $("history").querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); $("tk").value=a.dataset.t; analyze(a.dataset.t); }));
+}
+
 /* ---------- fetch & parse ---------- */
-async function jfetch(url){
+async function jfetchRaw(url){
   const r = await fetch(JR+url, {headers:{ "X-Return-Format":"markdown" }});
   if(!r.ok) throw new Error("fetch "+r.status);
-  return (await r.text()).replace(/\[([^\]]*)\]\([^)]*\)/g,"$1");   // ตัด markdown link
+  return await r.text();
+}
+async function jfetch(url){
+  return (await jfetchRaw(url)).replace(/\[([^\]]*)\]\([^)]*\)/g,"$1");   // ตัด markdown link
+}
+function fillAbout(co){
+  const facts=[];
+  const f=(label,re)=>{ const m=co.match(re); if(m) facts.push(label+" "+m[1].trim()); };
+  f("CEO:",/^CEO\s+(.+)$/m); f("อุตสาหกรรม:",/^Industry\s*(.+)$/m); f("กลุ่ม:",/^Sector\s*(.+)$/m);
+  f("พนักงาน:",/^Employees\s*([\d,]+)/m); f("ก่อตั้ง:",/^Founded\s+(\d{4})/m); f("IPO:",/^IPO Date\s+(.+)$/m); f("ประเทศ:",/^Country\s+(.+)$/m);
+  $("aboutFacts").innerHTML = facts.map(x=>`<span class="fact">${x}</span>`).join("");
+  const dm = co.match(/# Company Description\s*\n([\s\S]*?)(?:\n!\[|\nCountry\s)/);
+  if(dm){
+    const paras = dm[1].split(/\n+/).map(s=>s.trim()).filter(s=>s.length>40);
+    const head = paras.slice(0,2).join("<br><br>");
+    const rest = paras.slice(2).join("<br><br>");
+    $("aboutDesc").innerHTML = head + (rest? `<details><summary>อ่านต่อ…</summary><div style="margin-top:6px">${rest}</div></details>`:"");
+  } else $("aboutDesc").textContent = "ไม่พบคำอธิบายบริษัท";
+}
+function fillExec(co){
+  const rows=[...co.matchAll(/\|\s*([^|\n]{3,40}?)\s*\|\s*((?:Founder|Co-Founder|Chief|President|Chairman|CEO|CFO|COO|CTO)[^|\n]{0,70})\s*\|/g)]
+    .map(m=>[m[1].trim(), m[2].trim()])
+    .filter(([n])=>!/name/i.test(n)).slice(0,6);
+  $("execList").innerHTML = rows.length? rows.map(([n,t])=>`<div class="exrow"><b>${n}</b><span>${t}</span></div>`).join("") : `<div class="sub">ไม่พบข้อมูลผู้บริหาร</div>`;
+}
+function fillNews(ov, t, name){
+  const key = (name.split(/\s+/)[0]||t).toLowerCase();
+  const items=[...ov.matchAll(/###\s+\[([^\]]+)\]\(([^)]+)\)\s*\n+([^\n]*)\n+\s*(\d+\s+\w+\s+ago[^\n]*)/g)]
+    .map(m=>({h:m[1], u:m[2], s:m[3].trim(), d:m[4].trim()}));
+  let rel = items.filter(x=>(x.h+" "+x.s).toLowerCase().includes(key)||x.h.includes(t));
+  if(rel.length<3) rel=items;
+  $("newsList").innerHTML = rel.length? rel.slice(0,6).map(x=>
+    `<div class="nrow"><a href="${x.u}" target="_blank" rel="noopener">${x.h}</a><small>${x.d}</small></div>`).join("") : `<div class="sub">ไม่พบข่าว</div>`;
 }
 
 async function analyze(t){
@@ -297,7 +400,10 @@ async function analyze(t){
   $("go").disabled=true;
   $("status").className=""; $("status").textContent="กำลังดึงข้อมูล "+t+" … (10–30 วิ)";
   try{
-    const [stats, fin] = await Promise.all([ jfetch(SA(t)+"statistics/"), jfetch(SA(t)+"financials/") ]);
+    const [stats, fin, co, ov] = await Promise.all([
+      jfetch(SA(t)+"statistics/"), jfetch(SA(t)+"financials/"),
+      jfetch(SA(t)+"company/").catch(()=>""), jfetchRaw(SA(t)).catch(()=>"")
+    ]);
     if(/404|page not found/i.test(stats.slice(0,400))) throw new Error("ไม่พบ ticker นี้");
 
     // ราคา+ชื่อ (API เปิด CORS ตรง)
@@ -354,9 +460,12 @@ async function analyze(t){
     $("lnkSA").href = SA(t);
     $("lnkSEC").href = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company="+t+"&type=10-K&dateb=&owner=include&count=10";
 
+    fillAbout(co); fillExec(co); fillNews(ov, t, name);
+
     $("results").classList.remove("hidden");
     $("status").textContent = "ดึงสำเร็จ · แก้ตัวเลขในช่องได้ทุกช่อง + เลือก 2 ข้อที่ต้องประเมินเอง (ตำแหน่งตลาด, EV/S เทียบอดีต)";
     recompute();
+    saveHist(t, $("scoreN").textContent);
     window.scrollTo({top:$("results").offsetTop-10, behavior:"smooth"});
   }catch(e){
     $("status").className="err";
@@ -368,11 +477,10 @@ async function analyze(t){
 }
 
 buildRows();
+renderWatch();
+renderHist();
 $("go").onclick = ()=>analyze($("tk").value);
 $("tk").addEventListener("keydown",e=>{ if(e.key==="Enter") analyze($("tk").value); });
-document.querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",e=>{
-  e.preventDefault(); $("tk").value=a.dataset.t; analyze(a.dataset.t);
-}));
 </script>
 </body>
 </html>
