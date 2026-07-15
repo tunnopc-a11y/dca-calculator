@@ -113,7 +113,7 @@ a{color:var(--blue)}
 <div id="results" class="hidden">
 
   <div class="card verdict">
-    <div class="score-ring" id="ring"><b id="scoreN">–</b><small>/ 24</small></div>
+    <div class="score-ring" id="ring"><b id="scoreN">–</b><small id="scoreD">/ 24</small></div>
     <div>
       <div class="v-tag" id="vTag">–</div>
       <div class="v-name" id="vName"></div>
@@ -123,25 +123,30 @@ a{color:var(--blue)}
   </div>
 
   <div class="card" id="cardAbout">
-    <h2>🏢 บริษัททำอะไร</h2>
+    <h2 id="hAbout">🏢 บริษัททำอะไร</h2>
     <div id="aboutFacts" class="facts"></div>
     <div id="aboutDesc" class="desc"></div>
   </div>
 
   <div class="card">
-    <h2>ชั้น A — โตจริงไหม <span class="pts" id="ptsA"></span></h2>
+    <h2><span id="hA">ชั้น A — โตจริงไหม</span> <span class="pts" id="ptsA"></span></h2>
     <div id="secA"></div>
   </div>
   <div class="card">
-    <h2>ชั้น B — รอดถึงวันมีกำไรไหม <span class="pts" id="ptsB"></span></h2>
+    <h2><span id="hB">ชั้น B — รอดถึงวันมีกำไรไหม</span> <span class="pts" id="ptsB"></span></h2>
     <div id="secB"></div>
   </div>
   <div class="card">
-    <h2>ชั้น C — ยังไม่แพงไหม <span class="pts" id="ptsC"></span></h2>
+    <h2><span id="hC">ชั้น C — ยังไม่แพงไหม</span> <span class="pts" id="ptsC"></span></h2>
     <div id="secC"></div>
   </div>
 
-  <div class="card">
+  <div class="card hidden" id="cardHold">
+    <h2>📦 ถืออะไรบ้าง — Top 10</h2>
+    <div id="holdList"></div>
+  </div>
+
+  <div class="card" id="cardDCF">
     <h2>Reverse DCF — ราคานี้ ตลาดบังคับให้โตกี่ %/ปี?</h2>
     <div class="dcfgrid">
       <div><label>Revenue TTM ($M)</label><input type="number" id="dRev"></div>
@@ -164,6 +169,7 @@ a{color:var(--blue)}
     <div id="execList"></div>
   </div>
 
+
   <div class="card" id="cardNews">
     <h2>📰 ข่าวล่าสุด</h2>
     <div id="newsList"></div>
@@ -182,7 +188,8 @@ a{color:var(--blue)}
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
 const JR = "https://r.jina.ai/";
-const SA = t => `https://stockanalysis.com/stocks/${t.toLowerCase()}/`;
+const SA   = t => `https://stockanalysis.com/stocks/${t.toLowerCase()}/`;
+const ETFU = t => `https://stockanalysis.com/etf/${t.toLowerCase()}/`;
 
 function numToken(s){           // "25.19B"→25190 ($M) | "44.27%"→44.27 | "612.48M"→612.48 | "n/a"→null
   if(s==null) return null;
@@ -203,6 +210,11 @@ function grab(text, label){     // หา "Label 12.3B" / "Label (YoY)+2.9%" ใ
   const m = text.match(re);
   return m ? numToken(m[1]) : null;
 }
+function grabLine(text, label){ // เจาะจงว่าต้องขึ้นต้นบรรทัด (กัน "Avg. Volume" ชนกับ "Volume")
+  const esc = label.replace(/[.*+?^${}()|[\]\\/]/g,"\\$&");
+  const m = text.match(new RegExp("^"+esc+"\\s*\\(?([+-]?[\\d.,]+\\s*[%BMTKbmtk]?|n/a|-)","m"));
+  return m ? numToken(m[1]) : null;
+}
 function finRow(text, label){   // แถวตาราง markdown "| Label | v1 | v2 |..."
   const esc = label.replace(/[.*+?^${}()|[\]\\/]/g,"\\$&");
   const re = new RegExp("\\|\\s*"+esc+"\\s*\\|([^\\n]+)");
@@ -214,7 +226,7 @@ const fmt = (v,d=1) => v==null||isNaN(v) ? "–" : (+v).toLocaleString("en-US",{
 
 /* ---------- scoring ---------- */
 // type hi/lo: p1=เกณฑ์ดี p2=เกณฑ์กลาง | qual: ค่า 0/0.5/1
-const METRICS = [
+const STOCK_METRICS = [
  {sec:"A", id:"growth",  name:"Revenue Growth YoY (%)", hint:"≥25 ดี · 15–25 กลาง", type:"hi", p1:25, p2:15},
  {sec:"A", id:"gm",      name:"Gross Margin (%)",       hint:"≥60 ดี · 40–60 กลาง", type:"hi", p1:60, p2:40},
  {sec:"A", id:"gmtrend", name:"เทรนด์ Gross Margin",     hint:"เทียบ TTM กับ 2 ปีก่อน", type:"qual", opts:["ลง","ทรง","ขึ้น"]},
@@ -228,6 +240,21 @@ const METRICS = [
  {sec:"C", id:"gap",     name:"Growth จริง − Implied (%)", hint:"จาก Reverse DCF ล่าง (อัตโนมัติ)", type:"hi", p1:5, p2:-5, ro:true},
  {sec:"C", id:"evshist", name:"EV/S เทียบคู่แข่ง/อดีตตัวเอง", hint:"ดูกราฟใน stockanalysis", type:"qual", opts:["แพงกว่า","พอกัน","ถูกกว่า"]},
 ];
+// ETF ใช้เกณฑ์คนละชุด — ไม่มี revenue/margin/DCF ให้วัด
+const ETF_METRICS = [
+ {sec:"A", id:"fee",   name:"Expense Ratio (%/ปี)",      hint:"≤0.10 ดี · 0.10–0.30 กลาง · >0.30 แพง", type:"lo", p1:0.10, p2:0.30},
+ {sec:"B", id:"aum",   name:"ขนาดกอง AUM ($B)",          hint:"≥1 ดี · 0.1–1 กลาง · <0.1 เสี่ยงปิดกอง", type:"hi", p1:1, p2:0.1},
+ {sec:"B", id:"vol",   name:"ปริมาณซื้อขาย/วัน (หุ้น)",   hint:"≥1M ดี · 100k–1M กลาง · <100k spread กว้าง", type:"hi", p1:1e6, p2:1e5},
+ {sec:"B", id:"age",   name:"อายุกอง (ปี)",              hint:"≥5 ดี · 3–5 กลาง · กองใหม่ยังไม่ผ่านวิกฤต", type:"hi", p1:5, p2:3},
+ {sec:"C", id:"nhold", name:"จำนวนหลักทรัพย์ที่ถือ",      hint:"≥100 ดี · 30–100 กลาง (กองทอง/สินค้าโภคภัณฑ์ไม่นับ)", type:"hi", p1:100, p2:30},
+ {sec:"C", id:"top10", name:"กระจุกตัว Top 10 (%)",       hint:"≤40 ดี · 40–60 กลาง · >60 กระจุก", type:"lo", p1:40, p2:60},
+];
+const SEC_TITLE = {
+  stock:{A:"ชั้น A — โตจริงไหม", B:"ชั้น B — รอดถึงวันมีกำไรไหม", C:"ชั้น C — ยังไม่แพงไหม", about:"🏢 บริษัททำอะไร"},
+  etf:  {A:"ชั้น A — ต้นทุน (สิ่งเดียวที่คุมได้แน่)", B:"ชั้น B — สภาพคล่อง & ความมั่นคง", C:"ชั้น C — การกระจายความเสี่ยง", about:"📊 กองนี้ลงทุนอะไร"},
+};
+let MODE = "stock";
+const M_LIST = () => MODE==="etf" ? ETF_METRICS : STOCK_METRICS;
 const state = {};   // id -> value
 
 function scoreOf(m, v){
@@ -242,9 +269,15 @@ function scoreOf(m, v){
 }
 
 function buildRows(){
+  const T = SEC_TITLE[MODE];
+  $("hA").textContent=T.A; $("hB").textContent=T.B; $("hC").textContent=T.C; $("hAbout").textContent=T.about;
+  $("cardDCF").classList.toggle("hidden", MODE==="etf");
+  $("cardExec").classList.toggle("hidden", MODE==="etf");
+  $("cardHold").classList.toggle("hidden", MODE!=="etf");
+  Object.keys(state).forEach(k=>delete state[k]);
   ["A","B","C"].forEach(sec=>{
     const box = $("sec"+sec); box.innerHTML="";
-    METRICS.filter(m=>m.sec===sec).forEach(m=>{
+    M_LIST().filter(m=>m.sec===sec).forEach(m=>{
       const row = document.createElement("div");
       row.className="mrow";
       let ctrl;
@@ -291,7 +324,26 @@ function impliedGrowth(R0, EV, mar, w, N, tg){
   return (lo+hi)/2*100;
 }
 
+function recomputeETF(){
+  let got=0, max=0, per={A:0,B:0,C:0}, perMax={A:0,B:0,C:0};
+  ETF_METRICS.forEach(m=>{
+    const v = state[m.id];
+    const r = scoreOf(m, v);
+    const p=$("pill_"+m.id); p.className="pill "+r.cls; p.textContent=r.txt;
+    if(v!=null && !isNaN(v)){ got+=r.s; max+=2; per[m.sec]+=r.s; perMax[m.sec]+=2; }
+  });
+  ["A","B","C"].forEach(s=>$("pts"+s).textContent = perMax[s]? per[s]+" / "+perMax[s] : "ไม่มีข้อมูล");
+  $("scoreN").textContent = got;
+  $("scoreD").textContent = "/ "+(max||"–");
+  const pct = max? got/max : 0;
+  const ring=$("ring"), tag=$("vTag");
+  ring.className="score-ring "+(pct>=0.8?"v-good":pct>=0.5?"v-warn":"v-bad");
+  tag.textContent = !max? "ไม่มีข้อมูลพอ" : pct>=0.8?"✓ กองคุณภาพ — ใช้เป็นแกนได้":pct>=0.5?"⚠ พอใช้ — เทียบกองอื่นก่อน":"✗ หลบ — หากองที่ถูก/ใหญ่กว่า";
+  tag.style.color = pct>=0.8?"var(--good)":pct>=0.5?"var(--warn)":"var(--bad)";
+}
+
 function recompute(){
+  if(MODE==="etf") return recomputeETF();
   // DCF
   const R0=+$("dRev").value||null, EV=+$("dEV").value||null;
   const imp = impliedGrowth(R0, EV, +$("dMar").value, +$("dWacc").value, +$("dN").value, +$("dTg").value);
@@ -309,13 +361,13 @@ function recompute(){
 
   // pills + totals
   let total=0, per={A:0,B:0,C:0};
-  METRICS.forEach(m=>{
+  STOCK_METRICS.forEach(m=>{
     const r=scoreOf(m, state[m.id]);
     const p=$("pill_"+m.id); p.className="pill "+r.cls; p.textContent=r.txt;
     total+=r.s; per[m.sec]+=r.s;
   });
   $("ptsA").textContent=per.A+" / 10"; $("ptsB").textContent=per.B+" / 8"; $("ptsC").textContent=per.C+" / 6";
-  $("scoreN").textContent=total;
+  $("scoreN").textContent=total; $("scoreD").textContent="/ 24";
   const ring=$("ring"), tag=$("vTag");
   ring.className="score-ring "+(total>=19?"v-good":total>=12?"v-warn":"v-bad");
   tag.textContent = total>=19?"✓ น่าศึกษาต่อ — เข้าไม้เล็กได้":total>=12?"⚠ Watchlist — ตามต่อ":"✗ ผ่าน / หลบ";
@@ -335,9 +387,21 @@ const WATCH = [
  ["MELI", "Amazon+ธนาคารของละตินอเมริกา โตแรง",               "FX + การเมือง LatAm"],
  ["CRWD", "ผู้นำ cybersecurity โตดี",                          "แพงมาก — ดูชั้น C ให้หนัก"],
 ];
+const ETF_WATCH = [
+ ["VT",   "หุ้นทั้งโลกตัวเดียวจบ (fee 0.06%)",      "ใช้แทนตะกร้าที่จัดเอง ไม่ใช่โปะเพิ่ม"],
+ ["SPY",  "S&P 500 สภาพคล่องสูงสุด",                "ถือยาวใช้ VOO/IVV ถูกกว่า"],
+ ["QQQ",  "Nasdaq 100 — เครื่องยนต์พอร์ตเรา",       "กระจุก Top10 ~45% + วัฏจักรเทค"],
+ ["GLDM", "ทองแท่ง fee 0.10% — โช้คอัพ+เชื้อเพลิง rebalance", "ทองเดี่ยวเคยดิ่ง -33%"],
+ ["EPI",  "อินเดีย earnings-weighted (P/E 16x)",     "รูปีอ่อนเรื้อรัง 2-4%/ปี"],
+ ["AGG",  "ตราสารหนี้สหรัฐ",                         "corr 0.38 กับหุ้นสหรัฐในบาท — ไม่ใช่โช้คอัพของคนไทย"],
+];
+function wlRow([t,th,rk]){
+  return `<div class="wl"><button data-t="${t}">${t}</button><span class="th">${th}</span><span class="rk">⚠ ${rk}</span></div>`;
+}
 function renderWatch(){
-  $("watchlist").innerHTML = WATCH.map(([t,th,rk])=>
-    `<div class="wl"><button data-t="${t}">${t}</button><span class="th">${th}</span><span class="rk">⚠ ${rk}</span></div>`).join("");
+  $("watchlist").innerHTML =
+    `<div class="sub" style="margin:2px 0 4px">หุ้นรายตัว</div>` + WATCH.map(wlRow).join("") +
+    `<div class="sub" style="margin:12px 0 4px">ETF (ตัวที่ใช้ในพอร์ตที่จัดไว้)</div>` + ETF_WATCH.map(wlRow).join("");
   $("watchlist").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{ $("tk").value=b.dataset.t; analyze(b.dataset.t); }));
 }
 /* ---------- history ---------- */
@@ -351,7 +415,7 @@ function saveHist(t, score){
 }
 function renderHist(){
   const h = loadHist();
-  $("history").innerHTML = h.length? "เคยวิเคราะห์: "+h.map(x=>`<a href="#" class="chip" data-t="${x.t}">${x.t} ${x.score}/24</a>`).join(" ") : `<span class="chip">ยังไม่เคยวิเคราะห์ — ลองกดจากวอทช์ลิสต์ด้านล่าง</span>`;
+  $("history").innerHTML = h.length? "เคยวิเคราะห์: "+h.map(x=>`<a href="#" class="chip" data-t="${x.t}">${x.t} ${x.score}</a>`).join(" ") : `<span class="chip">ยังไม่เคยวิเคราะห์ — ลองกดจากวอทช์ลิสต์ด้านล่าง</span>`;
   $("history").querySelectorAll("[data-t]").forEach(a=>a.addEventListener("click",e=>{ e.preventDefault(); $("tk").value=a.dataset.t; analyze(a.dataset.t); }));
 }
 
@@ -436,17 +500,100 @@ function fillNews(ov, t, name){
   });
 }
 
+/* ---------- ETF mode ---------- */
+async function analyzeETF(t){
+  const [pg, ovRaw] = await Promise.all([ jfetch(ETFU(t)), jfetchRaw(ETFU(t)) ]);
+  if(/404|page not found/i.test(pg.slice(0,400))) throw new Error("ไม่พบ ticker นี้ (ทั้งหุ้นและ ETF)");
+  MODE="etf"; buildRows();
+
+  const assets  = grab(pg,"Assets\\$") ?? (pg.match(/Assets\$([\d.,]+\s*[BMK])/)? numToken(pg.match(/Assets\$([\d.,]+\s*[BMK])/)[1]) : null);
+  const fee     = grab(pg,"Expense Ratio");
+  const vol     = grabLine(pg,"Volume");
+  const nhold   = grabLine(pg,"Holdings");
+  const beta    = grabLine(pg,"Beta");
+  const dy      = grab(pg,"Dividend Yield");
+  const top10m  = pg.match(/##\s*Top 10 Holdings\s*\n+\s*([\d.]+)%\s*of assets/);
+  const top10   = top10m? parseFloat(top10m[1]) : null;
+  const incM    = pg.match(/Inception Date\s+([A-Za-z]{3}\s+\d{1,2},\s+\d{4})/);
+  const inc     = incM? new Date(incM[1]) : null;
+  const age     = inc? +(( Date.now()-inc.getTime() )/(365.25*864e5)).toFixed(1) : null;
+  const aclass  = (pg.match(/^Asset Class\s+(.+)$/m)||[])[1];
+  const isCommodity = /commodit/i.test(aclass||"");
+
+  setVal("fee", fee, 2);
+  setVal("aum", assets!=null? +(assets/1000).toFixed(2) : null, 2);   // $M → $B
+  setVal("vol", vol, 0);
+  setVal("age", age, 1);
+  setVal("nhold", isCommodity? null : nhold, 0);
+  setVal("top10", isCommodity? null : top10, 1);
+
+  // facts + about
+  const facts=[];
+  const pf=(lab,re,suf="")=>{ const m=pg.match(re); if(m) facts.push(lab+" "+m[1].trim()+suf); };
+  pf("ประเภท:",/^Asset Class\s+(.+)$/m); pf("หมวด:",/^Category\s+(.+)$/m);
+  pf("ตามดัชนี:",/^Index Tracked\s+(.+)$/m); pf("ผู้ออกกอง:",/^ETF Provider\s*(.+)$/m);
+  if(dy!=null) facts.push("ปันผล: "+fmt(dy,2)+"%");
+  if(beta!=null) facts.push("Beta: "+fmt(beta,2));
+  const perf = pg.match(/total return of ([\d.-]+)% in the past year/);
+  if(perf) facts.push("ผลตอบแทน 1 ปี: "+perf[1]+"%");
+  const since = pg.match(/average annual return has been ([\d.-]+)%/);
+  if(since) facts.push("เฉลี่ยตั้งแต่ตั้งกอง: "+since[1]+"%/ปี");
+  $("aboutFacts").innerHTML = facts.map(x=>`<span class="fact">${x}</span>`).join("");
+
+  const am = pg.match(new RegExp("##\\s*About\\s+"+t+"\\s*\\n([\\s\\S]*?)(?:\\nAsset Class)"));
+  if(am){
+    const ps = am[1].split(/\n+/).map(s=>s.trim()).filter(s=>s.length>40);
+    const paint=(arr,note)=>$("aboutDesc").innerHTML = arr.join("<br><br>") + (note?`<div class="sub" style="margin-top:6px">${note}</div>`:"");
+    paint(ps,"");
+    thBatch(ps).then(tp=>{ if(tp) paint(tp,"แปลอัตโนมัติ · ต้นฉบับดูใน stockanalysis ↗"); });
+  } else $("aboutDesc").textContent = "ไม่พบคำอธิบายกอง";
+
+  // holdings
+  const rows=[...pg.matchAll(/\|\s*([^|\n]{2,50}?)\s*\|\s*([A-Za-z.\-]{1,8}|n\/a)\s*\|\s*([\d.]+%)\s*\|/g)]
+    .map(m=>[m[1].trim(), m[2].trim(), m[3].trim()]).filter(r=>!/^name$/i.test(r[0])).slice(0,10);
+  $("holdList").innerHTML = rows.length
+    ? (top10!=null? `<div class="sub" style="margin-bottom:6px">Top 10 รวมกัน ${top10}% ของกอง</div>`:"")
+      + rows.map(([n,s,w])=>`<div class="exrow"><b>${s!=="n/a"?s+" · ":""}${n}</b><span>${w}</span></div>`).join("")
+    : `<div class="sub">ไม่พบรายการถือครอง</div>`;
+
+  // header
+  const nm = pg.match(/^#\s+(.+?)\s*\([A-Z.]{1,6}\)\s*$/m);
+  const name = nm? nm[1].trim() : t;
+  let price=null;
+  try{ const q=await (await fetch(`https://stockanalysis.com/api/quotes/s/${t}`)).json(); price=q?.data?.cl??q?.data?.p??null; }catch(e){}
+  $("vName").textContent = name+" ("+t+") · ETF";
+  $("vPrice").textContent = (price?"ราคา ~$"+fmt(price,2)+" · ":"")+"AUM $"+fmt(assets/1000,1)+"B · ค่าธรรมเนียม "+fmt(fee,2)+"%/ปี";
+  $("lnkSA").href = ETFU(t);
+  $("lnkSEC").textContent = "หน้ากองทางการ ↗";
+  const fh = ovRaw.match(/\[Fund Home Page\]\(([^)\s"]+)/);
+  $("lnkSEC").href = fh? fh[1] : ETFU(t)+"holdings/";
+
+  fillNews(ovRaw, t, name);
+  $("results").classList.remove("hidden");
+  recompute();
+  $("status").textContent = "ดึงสำเร็จ (โหมด ETF) · เกณฑ์คนละชุดกับหุ้น — ตัวชี้วัดที่ไม่เกี่ยวกับกองนี้จะไม่ถูกนับคะแนน";
+  saveHist(t, $("scoreN").textContent+$("scoreD").textContent.replace(/\s/g,""));
+  window.scrollTo({top:$("results").offsetTop-10, behavior:"smooth"});
+}
+
 async function analyze(t){
   t=t.trim().toUpperCase();
   if(!t) return;
   $("go").disabled=true;
   $("status").className=""; $("status").textContent="กำลังดึงข้อมูล "+t+" … (10–30 วิ)";
   try{
-    const [stats, fin, co, ov] = await Promise.all([
-      jfetch(SA(t)+"statistics/"), jfetch(SA(t)+"financials/"),
+    const stats0 = await jfetch(SA(t)+"statistics/");
+    if(/404|page not found/i.test(stats0.slice(0,400))){        // ไม่ใช่หุ้น → ลองเป็น ETF
+      $("status").textContent = t+" ไม่ใช่หุ้นสามัญ — กำลังลองเป็น ETF …";
+      await analyzeETF(t);
+      $("go").disabled=false;
+      return;
+    }
+    if(MODE!=="stock"){ MODE="stock"; buildRows(); }
+    const [stats, fin, co, ov] = [stats0, ...await Promise.all([
+      jfetch(SA(t)+"financials/"),
       jfetch(SA(t)+"company/").catch(()=>""), jfetchRaw(SA(t)).catch(()=>"")
-    ]);
-    if(/404|page not found/i.test(stats.slice(0,400))) throw new Error("ไม่พบ ticker นี้");
+    ])];
 
     // ราคา+ชื่อ (API เปิด CORS ตรง)
     let price=null, name=t;
@@ -507,7 +654,7 @@ async function analyze(t){
     $("results").classList.remove("hidden");
     $("status").textContent = "ดึงสำเร็จ · แก้ตัวเลขในช่องได้ทุกช่อง + เลือก 2 ข้อที่ต้องประเมินเอง (ตำแหน่งตลาด, EV/S เทียบอดีต)";
     recompute();
-    saveHist(t, $("scoreN").textContent);
+    saveHist(t, $("scoreN").textContent+"/24");
     window.scrollTo({top:$("results").offsetTop-10, behavior:"smooth"});
   }catch(e){
     $("status").className="err";
